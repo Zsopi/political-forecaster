@@ -512,7 +512,77 @@ ml_data$resdummy<-as.factor(ml_data$resdummy)
 
 h2o_ml_data = as.h2o(ml_data,destination_frame ='h2o_ml_data' )
 
+#estimating final models
+set.seed(42)
 
+#gbm_final
+ml.gbm_final <- h2o.gbm(
+        x = setdiff(names(ml_data), 'trouble_dummy'),
+        y = 'trouble_dummy',
+        training_frame = 'h2o_ml_data',
+        nfolds=5,
+        ntrees = 500,
+        max_depth = 20,
+        learn_rate = 0.01,
+        stopping_rounds = 5,
+        stopping_tolerance = 1e-3,
+        model_id = 'ml_gbm_final')
 
+ml.gbm_final
 
+#random forest final
+ml.rf_final <- h2o.randomForest(
+        x = setdiff(names(ml_data), 'trouble_dummy'),
+        y = 'trouble_dummy',
+        training_frame = 'h2o_ml_data',
+        max_depth = 20,
+        ntrees = 150,
+        stopping_rounds = 3, stopping_tolerance = 1e-3,
+        nfolds=5,
+        model_id = 'ml_rf_final')
 
+ml.rf_final
+
+#deeplearning final (no grid search, just to see if it improves ensemble)
+ml.dl_final <- h2o.deeplearning(
+        x = setdiff(names(ml_data), 'trouble_dummy'),
+        y = 'trouble_dummy',
+        training_frame = 'h2o_ml_data',
+        nfolds=5,hidden = c(200,200), epochs = 100,
+        stopping_rounds = 3, stopping_tolerance = 1e-3,
+        model_id = 'ml_dl_final')
+
+ml.dl_final
+
+#generalized linear model
+ml.glm_final <- h2o.glm(
+        x = setdiff(names(ml_data), 'trouble_dummy'),
+        y = 'trouble_dummy',
+        training_frame = 'h2o_ml_data', family= "binomial",
+        nfolds=5,
+        model_id = 'ml_glm_final')
+
+ml.glm_final
+
+#generating dataset for predicitons
+data_w_fcast<-alldata_merged_new%>%
+        select(year,country,iso3c,trouble_dummy,polity2,ln_gdp_pc,gdp_pc_grth_lgd,resdummy,youth_r,young_pop_grth,total_pop_grth,polity_youthr,gdp_youthr)
+
+#assuming same polity rating in 2015 and 2016 as in 2014
+cnames<-levels(as.factor(data_w_fcast$iso3c))
+
+for (cn in cnames){     data_w_fcast$polity2[(data_w_fcast$year==2015|data_w_fcast$year==2016)&data_w_fcast$iso3c==cn]<-data_w_fcast$polity2[data_w_fcast$year==2014&data_w_fcast$iso3c==cn]
+}
+
+#adding missing country names
+data_w_fcast$country <- countrycode(data_w_fcast$iso3c, "iso3c", "country.name")
+
+#re-generating  interaction terms, h2o data
+data_w_fcast<-data_w_fcast%>%mutate(gdp_youthr=ln_gdp_pc*youth_r,polity_youthr=polity2*youth_r)
+h2o_fcast_data = as.h2o(data_w_fcast,destination_frame ='h2o_fcast_data' )
+
+#attaching forecasts to dataset
+data_w_fcast<-cbind(data_w_fcast,gbm_predict=as.data.frame(h2o.predict(ml.gbm_final,newdata = h2o_fcast_data))[,3])
+data_w_fcast<-cbind(data_w_fcast,rf_predict=as.data.frame(h2o.predict(ml.rf_final,newdata = h2o_fcast_data))[,3])
+data_w_fcast<-cbind(data_w_fcast,dl_predict=as.data.frame(h2o.predict(ml.dl_final,newdata = h2o_fcast_data))[,3])
+data_w_fcast<-cbind(data_w_fcast,glm_predict=as.data.frame(h2o.predict(ml.glm_final,newdata = h2o_fcast_data))[,3])
