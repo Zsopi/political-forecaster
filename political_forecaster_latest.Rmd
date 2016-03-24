@@ -851,6 +851,9 @@ ml.glm_final <- h2o.glm(
         model_id = 'ml_glm_final')
 ```
 
+```{r}
+ml.glm_final
+```
 
 ##I did not manage to make the ensemble function in h2o work (some isses with Rcurl), so I will just use the average probability forecast of the final models as my final probabilities. Probabilities are fine if we think of this as an input for decisionmakers etc., and it can be converted to a 0/1 forecast easily if needed
 
@@ -879,6 +882,7 @@ h2o_fcast_data = as.h2o(data_w_fcast,destination_frame ='h2o_fcast_data' )
 data_w_fcast<-cbind(data_w_fcast,gbm_predict=as.data.frame(h2o.predict(ml.gbm_final,newdata = h2o_fcast_data))[,3])
 data_w_fcast<-cbind(data_w_fcast,rf_predict=as.data.frame(h2o.predict(ml.rf_final,newdata = h2o_fcast_data))[,3])
 data_w_fcast<-cbind(data_w_fcast,dl_predict=as.data.frame(h2o.predict(ml.dl_final,newdata = h2o_fcast_data))[,3])
+data_w_fcast<-cbind(data_w_fcast,glm_predict=as.data.frame(h2o.predict(ml.glm_final,newdata = h2o_fcast_data))[,3])
 
 ```
 
