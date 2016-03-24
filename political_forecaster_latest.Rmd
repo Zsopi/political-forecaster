@@ -839,6 +839,19 @@ Deep Learning (Neural network) has a significantly lower AUC than the other 2 mo
 ml.dl_final
 ```
 
+it would be god to have a logit regression as well
+
+```{r results='hide', message=FALSE, warning=FALSE}
+#generalized linear model
+ml.glm_final <- h2o.glm(
+        x = setdiff(names(ml_data), 'trouble_dummy'),
+        y = 'trouble_dummy',
+        training_frame = 'h2o_ml_data', family= "binomial",
+        nfolds=5,
+        model_id = 'ml_glm_final')
+```
+
+
 ##I did not manage to make the ensemble function in h2o work (some isses with Rcurl), so I will just use the average probability forecast of the final models as my final probabilities. Probabilities are fine if we think of this as an input for decisionmakers etc., and it can be converted to a 0/1 forecast easily if needed
 
 ##Deep learning looks very different from the other methods, see second chart
@@ -943,8 +956,8 @@ h2o.shutdown()
 
 ### * The most valuable part of this work probably was that it gathered a dataset and put it in a usable format - this will make further estimations and discovery possible 
 
-### * This is a work in progress, and despite the overtime, I could not make it as nice as I would have liked - sorry about the messy outcome...
+### * This is a work in progress
 
-### * But it was fun and I learned a lot :) in the hard way :)
+### * But it has been fun so far and I learned a lot :) in the hard way :)
 
 ### * Also, some of the results are interesting, as dicussed above, and I would like to investigate them further, especially the possible case of overfitting

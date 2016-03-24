@@ -446,4 +446,73 @@ alldata_merged<-alldata_merged%>%mutate(trouble_dummy=pol_viol_dummy+coup_dummy+
 
 #end of datafile generation (apart from demographic data)
 
+###Results show that the 17-24 age bracket is the best definition of "young"
+###as far as predicting political trouble is concerned, so I will use this definition,
+###but the results are close to each other, so the exact age range does not make much difference.
+###I will re-generate demographic variables in the following chunk
+###change age bracket for young by changing i and j below
+
+i=17
+j=24
+
+set.seed(42)
+h2o.init()
+
+
+demdata$adult_pop<-rowSums(demdata[,(i+8):88])
+demdata$young_pop<-rowSums(demdata[,(i+8):(j+8)])
+demdata$youth_r <-demdata$young_pop/demdata$adult_pop
+demdata$workingage_pop<-rowSums(demdata[,i+8:72])
+
+#generating growth rates
+demdata$total_pop_grth<-NA
+demdata$adult_pop_grth<-NA
+demdata$workingage_pop_grth<-NA
+demdata$young_pop_grth<-NA
+
+for (k in 2:length(demdata$year)){
+        if (demdata$iso3c[k]==demdata$iso3c[k-1]) {
+                demdata$total_pop_grth[k]<-demdata$total_pop[k]/demdata$total_pop[k-1]-1
+                demdata$adult_pop_grth[k]<-demdata$adult_pop[k]/demdata$adult_pop[k-1]-1
+                demdata$workingage_pop_grth[k]<-demdata$workingage_pop[k]/demdata$workingage_pop[k-1]-1
+                demdata$young_pop_grth[k]<-demdata$young_pop[k]/demdata$young_pop[k-1]-1
+        }
+}
+
+
+demdata_nrw<-demdata[,c("iso3c","year","total_pop","young_pop","workingage_pop","adult_pop","youth_r",
+                        "total_pop_grth","young_pop_grth","workingage_pop_grth","adult_pop_grth")]
+demdata_nrw<-droplevels(demdata_nrw)
+
+#merging demographic data with rest    
+
+alldata_merged_new <- merge(alldata_merged,demdata_nrw,id="iso3c",all=TRUE)    
+
+#normalizing polity2 variable
+alldata_merged_new<-alldata_merged_new%>%mutate(polity2=polity2+11)
+
+#adding interaction terms
+alldata_merged_new<-alldata_merged_new%>%mutate(gdp_youthr=ln_gdp_pc*youth_r,polity_youthr=polity2*youth_r)
+
+#saving generated datafile
+save(alldata_merged_new,file="alldata_saved.Rda")
+
+#generating machine learning data
+
+alldata_merged_new<-as.data.frame(alldata_merged_new)
+
+alldata_merged_new<-alldata_merged_new%>%filter(year<=2020&year>=1950)
+ml_data<-alldata_merged_new%>%
+        select(trouble_dummy,polity2,ln_gdp_pc,gdp_pc_grth_lgd,resdummy,youth_r,young_pop_grth,total_pop_grth,
+               polity_youthr,gdp_youthr)
+
+
+ml_data$trouble_dummy<-as.factor(ml_data$trouble_dummy)
+ml_data$resdummy<-as.factor(ml_data$resdummy)
+
+h2o_ml_data = as.h2o(ml_data,destination_frame ='h2o_ml_data' )
+
+
+
+
 
