@@ -586,3 +586,32 @@ data_w_fcast<-cbind(data_w_fcast,gbm_predict=as.data.frame(h2o.predict(ml.gbm_fi
 data_w_fcast<-cbind(data_w_fcast,rf_predict=as.data.frame(h2o.predict(ml.rf_final,newdata = h2o_fcast_data))[,3])
 data_w_fcast<-cbind(data_w_fcast,dl_predict=as.data.frame(h2o.predict(ml.dl_final,newdata = h2o_fcast_data))[,3])
 data_w_fcast<-cbind(data_w_fcast,glm_predict=as.data.frame(h2o.predict(ml.glm_final,newdata = h2o_fcast_data))[,3])
+
+
+#some plot of the results - deep learning looks very different from the other two methods
+data_w_fcast[complete.cases(as.data.frame(h2o_fcast_data)),]%>%ggplot(aes(gbm_predict,rf_predict))+geom_point()
+data_w_fcast[complete.cases(as.data.frame(h2o_fcast_data)),]%>%ggplot(aes(gbm_predict,dl_predict))+geom_point()
+data_w_fcast[complete.cases(as.data.frame(h2o_fcast_data)),]%>%ggplot(aes(gbm_predict,glm_predict))+geom_point()
+data_w_fcast[complete.cases(as.data.frame(h2o_fcast_data)),]%>%ggplot(aes(trouble_dummy,gbm_predict))+geom_point()
+data_w_fcast[complete.cases(as.data.frame(h2o_fcast_data)),]%>%ggplot(aes(gbm_predict))+geom_density()
+
+##Let's see how 2016 looks like in terms of political trouble predicitons.
+#Worst countries are at the top, based on avg_predict (last column), which is the average
+#of the three machine learning prediction probabilities (GBM, RF, DL).
+#This is the final test of the model, but can be evaluated only next year :)
+#However, the results look broadly pausible...
+
+panderOptions('round', 4)
+panderOptions('keep.trailing.zeros', TRUE)
+
+pred_2016<-data_w_fcast%>%filter(year==2016)%>%mutate(avg_predict=(gbm_predict+rf_predict+dl_predict)/3)%>%arrange(desc(avg_predict))%>%select(-year, -trouble_dummy, -polity_youthr, -gdp_youthr)
+
+pred_2016_nrw<-pred_2016%>%select(country,iso3c,gbm_predict,rf_predict,dl_predict,avg_predict)
+
+#pandoc.table(pred_2016_nrw, split.table= Inf)
+#pandoc.table(pred_2016, split.table= Inf)
+
+panderOptions('table.split.table', 300)
+pander(pred_2016)
+
+
